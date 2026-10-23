@@ -687,6 +687,41 @@ def test_celery_connection():
     }
 
 
+
+@celery_app.task(name="celery_worker.benchmark_classifier")
+def benchmark_classifier():
+    """Benchmark zero-shot inference without database writes."""
+    import time
+    import resource
+    from backend.python.models.classifier import classifier
+
+    text = (
+        "Heavy rainfall caused severe flooding in several "
+        "barangays in Imus, Cavite. Residents were evacuated "
+        "after floodwaters entered residential areas."
+    )
+
+    start = time.perf_counter()
+    classifier.load_model()
+    load_seconds = time.perf_counter() - start
+
+    start = time.perf_counter()
+    result = classifier.classify(text, threshold=0.5)
+    inference_seconds = time.perf_counter() - start
+
+    return {
+        "status": "success",
+        "hazard_type": result["hazard_type"],
+        "is_hazard": result["is_hazard"],
+        "model_load_seconds": round(load_seconds, 2),
+        "inference_seconds": round(inference_seconds, 2),
+        "peak_process_rss_mib": round(
+            resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024, 1
+        ),
+    }
+
+
+
 if __name__ == '__main__':
     # Run worker directly (for development)
     # In production, use: celery -A celery_worker worker --loglevel=info

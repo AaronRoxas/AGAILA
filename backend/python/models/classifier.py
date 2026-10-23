@@ -360,6 +360,15 @@ class ClimateNLIClassifier:
         r'\b(?:damage(?:s)?|loss(?:es)?)\s+(?:estimated|reported|worth|amounting)\b',
         r'\b(?:P|PHP|₱)\s*[\d,]+\s*(?:million|billion|worth)\s+(?:of\s+)?damage\b',
 
+
+        
+        # Active tropical cyclone warnings
+        r'\btropical\s+cyclone\s+wind\s+signal\s*(?:no\.?|number|#)?\s*[1-5]\b',
+        r'\b(?:TCWS|signal)\s*(?:no\.?|number|#)?\s*[1-5]\b',
+        r'\b(?:tropical\s+storm|severe\s+tropical\s+storm|typhoon|super\s+typhoon)\s+\w+(?:\s+\w+)?\s+(?:moves?|weakens?|intensifies?|strengthens?|approaches?|makes?\s+landfall)\b',
+        
+
+
         # Emergency response
         r'\b(?:rescue|search\s+and\s+rescue|evacuation)\s+(?:operation(?:s)?|ongoing|underway)\b',
         r'\b(?:emergency|disaster)\s+(?:responders?|response|situation|declared)\b',

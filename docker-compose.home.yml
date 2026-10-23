@@ -1,0 +1,107 @@
+
+services:
+  celery-beat:
+    image: gaia-backend:latest
+    container_name: agaila-home-beat
+    command: >
+      celery -A backend.python.celery_worker.celery_app
+      beat --loglevel=info
+      --schedule=/tmp/celerybeat-schedule
+    env_file:
+      - .env.home
+    environment:
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      RSS_UPDATE_INTERVAL_MINUTES: "15"
+    depends_on:
+      - redis
+    restart: unless-stopped
+    mem_limit: 256m
+  celery-worker:
+    image: gaia-backend
+    container_name: agaila-home-celery
+    command: >
+      celery -A backend.python.celery_worker.celery_app
+      worker --loglevel=info
+      --pool=solo
+      --concurrency=1
+    env_file:
+      - .env.home
+    environment:
+      ENV: production
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      REDIS_URL: redis://redis:6379/0
+      CLIMATE_NLI_MODEL_PATH: MoritzLaurer/deberta-v3-base-zeroshot-v1.1-all-33
+      GEO_NER_MODEL_PATH: dslim/bert-base-NER
+      OMP_NUM_THREADS: "4"
+      MKL_NUM_THREADS: "4"
+      OPENBLAS_NUM_THREADS: "4"
+    volumes:
+      - model-cache:/home/appuser/.cache/huggingface
+    depends_on:
+      redis:
+        condition: service_started
+    restart: unless-stopped
+    mem_limit: 3g
+    security_opt:
+      - no-new-privileges:true
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: agaila-home-api
+    command: >
+      uvicorn backend.python.main:app
+      --host 0.0.0.0
+      --port 8000
+      --workers 1
+    env_file:
+      - .env.home
+    environment:
+      ENV: production
+      CLIMATE_NLI_MODEL_PATH: MoritzLaurer/deberta-v3-base-zeroshot-v1.1-all-33
+      GEO_NER_MODEL_PATH: dslim/bert-base-NER
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      REDIS_URL: redis://redis:6379/0
+      OMP_NUM_THREADS: "4"
+      MKL_NUM_THREADS: "4"
+      OPENBLAS_NUM_THREADS: "4"
+      TORCH_NUM_THREADS: "4"
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - model-cache:/home/appuser/.cache/huggingface
+    depends_on:
+      - redis
+    restart: unless-stopped
+    mem_limit: 4g
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test:
+        - CMD
+        - curl
+        - -fsS
+        - http://127.0.0.1:8000/health
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 180s
+
+  redis:
+    image: redis:7-alpine
+    container_name: agaila-home-redis
+    command: >
+      redis-server --appendonly yes
+      --maxmemory 128mb
+      --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    mem_limit: 192m
+
+volumes:
+  model-cache:
+  redis-data:
