@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useRef, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, ZoomControl, ScaleControl, LayersControl, useMap } from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import { OpenStreetMapProvider } from 'leaflet-geosearch';
@@ -381,6 +381,8 @@ const PublicMap: React.FC = () => {
   const { user, hasRole } = useAuth(); // Get authenticated user
   const [hazards, setHazards] = useState<Hazard[]>([]);
   const [selectedHazard, setSelectedHazard] = useState<Hazard | null>(null);
+  const [searchParams] = useSearchParams();
+  const openedReportRef = useRef<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
   const [isLegendVisible, setIsLegendVisible] = useState(true);
@@ -503,9 +505,15 @@ const PublicMap: React.FC = () => {
       const mapped = hazardData.map(mapResponseToHazard);
       const deduped = dedupeHazards(mapped);
       setHazards(deduped);
+      setSelectedHazard(previous => {
+        if (!previous) return previous;
+        const refreshed = deduped.find(h => h.id === previous.id);
+        // Citizen-report assessment details are hydrated separately.
+        return refreshed && previous.source_type !== 'citizen_report' ? refreshed : previous;
+      });
       setLastUpdated(new Date());
       setAnnouncement(
-        `Hazard data refreshed. ${deduped.length} active hazards loaded.` +
+        `Hazard data refreshed. ${deduped.length} screened reports loaded.` +
         (deduped.length !== mapped.length
           ? ` Collapsed ${mapped.length - deduped.length} duplicate article${mapped.length - deduped.length === 1 ? '' : 's'
           }.`
@@ -564,7 +572,7 @@ const PublicMap: React.FC = () => {
   // GV-02: selecting a citizen-report hazard fetches its detail to JOIN-in the
   // damage-assessment payload (description/UNDP/image are stored only on the
   // citizen report, not duplicated onto the hazard) for DamageReportSidebar.
-  const handleSelectHazard = (hazard: Hazard) => {
+  const handleSelectHazard = useCallback((hazard: Hazard) => {
     setSelectedHazard(hazard);
     if (hazard.source_type !== 'citizen_report') return;
 
@@ -591,7 +599,18 @@ const PublicMap: React.FC = () => {
       .catch(() => {
         // Best-effort enrichment; the sidebar still shows base hazard info.
       });
-  };
+  }, []);
+
+  useEffect(() => {
+    const reportId = searchParams.get('report');
+    if (!reportId || openedReportRef.current === reportId) return;
+    const report = hazards.find(h => h.id === reportId);
+    if (!report) return;
+    openedReportRef.current = reportId;
+    handleSelectHazard(report);
+    setIsSidebarOpen(false);
+    mapInstanceRef.current?.setView([report.latitude, report.longitude], 10);
+  }, [hazards, searchParams, handleSelectHazard]);
 
   const hazardTypeCountMap = useMemo(() => {
     const slice = applyFilters(hazards, { skipHazardTypes: true });
@@ -1476,6 +1495,7 @@ const PublicMap: React.FC = () => {
                     key={hazard.id}
                     position={[hazard.latitude, hazard.longitude]}
                     icon={getHazardMarkerIcon(hazard.hazard_type, hazard.severity)}
+                    title={`${hazard.hazard_type.replace(/_/g, ' ')} · ${hazard.location_name} · Severity: ${hazard.severity === 'unknown' ? 'not assessed' : hazard.severity}`}
                     // @ts-expect-error - Custom option for cluster coloring (react-leaflet-cluster extension)
                     options={{ hazardType: hazard.hazard_type }}
                     draggable={isPinEditingActive}
@@ -1493,6 +1513,7 @@ const PublicMap: React.FC = () => {
                   key={hazard.id}
                   position={[hazard.latitude, hazard.longitude]}
                   icon={getHazardMarkerIcon(hazard.hazard_type, hazard.severity)}
+                  title={`${hazard.hazard_type.replace(/_/g, ' ')} · ${hazard.location_name} · Severity: ${hazard.severity === 'unknown' ? 'not assessed' : hazard.severity}`}
                   draggable={isPinEditingActive}
                   eventHandlers={{
                     click: () => handleSelectHazard(hazard),
@@ -1519,10 +1540,10 @@ const PublicMap: React.FC = () => {
               <Badge
                 variant="outline"
                 className="bg-green-50 text-green-700 border-green-200 dark:bg-green-950/50 dark:text-green-300 dark:border-green-800 font-semibold"
-                aria-label={`${hazards.length} active hazards displayed`}
+                aria-label={`${filteredHazards.length} screened reports displayed`}
               >
                 <span className="w-2 h-2 bg-green-500 rounded-full mr-1.5 animate-pulse" aria-hidden="true" />
-                {hazards.length} Active
+                {filteredHazards.length} Reports
               </Badge>
               <span className="hidden sm:inline text-muted-foreground">|</span>
               <span className="hidden sm:inline">

@@ -68,6 +68,14 @@ class HazardResponse(BaseModel):
     source_url: Optional[str] = None
     source_title: Optional[str] = None  # Match actual database schema
     source_content: Optional[str] = None  # Match actual database schema (was 'description')
+    source_published_at: Optional[str] = None
+    source_headline: Optional[str] = None
+    validation_notes: Optional[str] = None
+    image_url: Optional[str] = None
+    image_source_url: Optional[str] = None
+    image_alt: Optional[str] = None
+    image_status: Optional[str] = None
+    image_last_checked_at: Optional[str] = None
     created_at: str
     validated_at: Optional[str] = None
     validated_by: Optional[str] = None

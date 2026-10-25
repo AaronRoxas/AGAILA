@@ -27,7 +27,7 @@ export const HowItWorksSection: React.FC = () => {
     {
       number: '04',
       title: 'Actionable Visualization',
-      description: 'All verified and geolocated alerts are instantly plotted on the central command dashboard and hazard map, ready for LGU responders.',
+      description: 'Screened, geolocated reports appear on the hazard map with their original sources, confidence scores and workflow validation status for responders to review.',
     },
   ];
 
@@ -38,7 +38,7 @@ export const HowItWorksSection: React.FC = () => {
           From Raw Data to Real-Time Decision
         </h2>
         <p className="flex flex-col font-lato justify-center max-w-[720px] text-[14px] sm:text-[16px] leading-[24px] text-foreground">
-          AGAILA&apos;s intelligent pipeline transforms unstructured text reports into verified, actionable geospatial alerts in four steps.
+          AGAILA’s pipeline turns source reports into geospatial context in four steps. Automated classification supports review; it does not independently verify events.
         </p>
       </div>
 

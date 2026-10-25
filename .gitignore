@@ -89,6 +89,16 @@ openspec/
 /MODULE_CHECKLIST.md
 /SEED_RSS_DATA_QUICK.sql
 /backend/supabase/migrations
+# Keep this feature's migration and rollout guide reviewable in version control.
+!/backend/supabase/migrations/
+/backend/supabase/migrations/*
+!/backend/supabase/migrations/20261025000001_article_images.sql
+!/docs/
+/docs/*
+!/docs/README.md
+!/docs/guides/
+/docs/guides/*
+!/docs/guides/ARTICLE_IMAGES.md
 /.playwright-mcp
 /backend/supabase/seeders
 

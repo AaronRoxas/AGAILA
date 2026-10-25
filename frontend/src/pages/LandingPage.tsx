@@ -18,7 +18,7 @@ import {
  * 
  * Sections:
  * 0. Header - Navigation bar with logo and CTA buttons
- * 1. Hero - Main headline with CTAs and glassmorphism card
+ * 1. Hero - Map-first introduction and recent source reports
  * 2. Features - Core components showcase (AI Classification, Geo-NER, Dashboard)
  * 3. How It Works - 4-step pipeline explanation
  * 4. Product Showcase - AI-generated assessments preview

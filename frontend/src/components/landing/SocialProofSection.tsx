@@ -88,7 +88,7 @@ export const SocialProofSection: React.FC = () => {
                   <h3 className="font-lato text-[15px] font-bold leading-snug text-white sm:text-[16px]">
                     {item.label}
                   </h3>
-                  <p className="font-lato text-[13px] leading-[1.55] text-blue-100/85 sm:text-[14px]">
+                  <p className="font-lato text-[13px] leading-[1.55] text-white sm:text-[14px]">
                     {item.description}
                   </p>
                 </div>

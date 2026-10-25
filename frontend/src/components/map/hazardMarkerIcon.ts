@@ -4,7 +4,7 @@
  * Creates map markers with:
  * - FontAwesome SVG icons embedded for each hazard type
  * - Color-coded backgrounds matching hazard type
- * - Severity-based outer rings (critical/high/low)
+ * - Severity-based outer rings with a neutral style for unassessed reports
  * - Optimized caching with size-based eviction
  *
  * Module: GV-02 (Map Markers)
@@ -89,7 +89,7 @@ function evictCacheIfNeeded(): void {
  * Creates a hazard marker icon with FontAwesome SVG and severity ring
  *
  * @param hazardType - Type of hazard (e.g., 'flood', 'typhoon')
- * @param severity - Severity level: 'critical' | 'high' | 'low' (default: 'low')
+ * @param severity - Recorded severity; absent values remain unassessed
  * @returns Leaflet DivIcon ready for marker placement
  */
 export function getHazardMarkerIcon(
@@ -97,7 +97,7 @@ export function getHazardMarkerIcon(
   severity?: string
 ): DivIcon {
   const normalizedType = (hazardType || 'other').toLowerCase();
-  const normalizedSeverity = (severity || 'low').toLowerCase();
+  const normalizedSeverity = (severity || 'unknown').toLowerCase();
   const cacheKey = `${normalizedType}:${normalizedSeverity}`;
 
   // Return cached icon if available
@@ -112,9 +112,15 @@ export function getHazardMarkerIcon(
   const severityRing =
     normalizedSeverity === 'critical'
       ? '0 0 0 3px rgba(220,38,38,0.35)' // Red ring for critical
-      : normalizedSeverity === 'high'
-        ? '0 0 0 3px rgba(245,158,11,0.35)' // Amber ring for high
-        : '0 0 0 2px rgba(15,23,42,0.12)'; // Subtle grey ring for low
+      : ['high', 'severe'].includes(normalizedSeverity)
+        ? '0 0 0 3px rgba(234,88,12,0.5)'
+        : ['moderate', 'medium'].includes(normalizedSeverity)
+          ? '0 0 0 3px rgba(217,119,6,0.5)'
+          : ['minor', 'low'].includes(normalizedSeverity)
+            ? '0 0 0 2px rgba(13,148,136,0.5)'
+            : '0 0 0 2px rgba(15,23,42,0.25)';
+  const severityLabel = ['critical', 'high', 'severe', 'moderate', 'medium', 'minor', 'low']
+    .includes(normalizedSeverity) ? normalizedSeverity : 'not assessed';
 
   // Convert FontAwesome icon to SVG
   const iconSvg = iconToSvgString(config.icon, 14);
@@ -134,7 +140,7 @@ export function getHazardMarkerIcon(
       justify-content: center;
       flex-shrink: 0;
       overflow: hidden;
-    " title="${escapeHtml(config.ariaLabel)}">
+    " title="${escapeHtml(config.ariaLabel)} · Severity: ${severityLabel}">
       ${iconSvg}
     </div>`,
     iconSize: [24, 24],

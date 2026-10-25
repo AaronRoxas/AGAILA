@@ -39,6 +39,12 @@ export interface Hazard {
   source_title?: string;
   source_content?: string;
   source_published_at?: string;
+  source_headline?: string | null;
+  image_url?: string | null;
+  image_source_url?: string | null;
+  image_alt?: string | null;
+  image_status?: 'available' | 'missing' | 'failed' | null;
+  image_last_checked_at?: string | null;
   source?: string; // Feed URL for RSS sources
   validated: boolean;
   validated_at?: string;

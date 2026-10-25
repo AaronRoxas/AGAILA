@@ -1,417 +1,142 @@
-/**
- * Hazard Info Panel Component
- * 
- * Slide-in right panel for displaying detailed hazard information.
- * Replaces modal popups for cleaner, less intrusive UX.
- * 
- * Features:
- * - Smooth fade animation (always in DOM, opacity hidden)
- * - Quick stats display (severity, confidence, location)
- * - Action buttons (zoom to, view source)
- * - Close button with keyboard support (Esc)
- * - Responsive design (responsive width on mobile)
- * - Accessibility: Focus trap, ARIA labels, keyboard navigation
- * 
- * Module: GV-02 (Dynamic Markers)
- * Design: Minimalist + Flat design (Eleken guidelines)
- */
-
-import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { IconDefinition, faTimes, faMapPin, faExclamationTriangle, faChartLine, faEye, faExternalLinkAlt, faClock, faFire, faHouseChimneyCrack, faHouseFloodWater, faHurricane, faHillRockslide, faVolcano, faSunPlantWilt, faHouseFloodWaterCircleArrowRight } from '@fortawesome/free-solid-svg-icons';
-import { Card } from '../ui/card';
+import React, { useEffect, useRef } from 'react';
+import { X, MapPin, ExternalLink, AlertTriangle } from 'lucide-react';
 import { Button } from '../ui/button';
 import { cn } from '../../lib/utils';
+import { articleSourceUrl } from '../../lib/articleSource';
+import { ArticleImage } from './ArticleImage';
+
+interface PanelHazard {
+  id: string;
+  hazard_type: string;
+  severity?: string | null;
+  location_name: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  confidence_score: number;
+  source_type: string;
+  validated: boolean;
+  validation_notes?: string | null;
+  created_at: string;
+  source_content?: string | null;
+  source_title?: string | null;
+  source_headline?: string | null;
+  source_url?: string | null;
+  source_published_at?: string | null;
+  image_url?: string | null;
+  image_source_url?: string | null;
+  image_alt?: string | null;
+}
 
 interface HazardInfoPanelProps {
-  hazard: {
-    id: string;
-    hazard_type: string;
-    severity: string;
-    location_name: string;
-    latitude: number;
-    longitude: number;
-    confidence_score: number;
-    source_type: string;
-    validated: boolean;
-    created_at: string;
-    source_content?: string;
-    source_url?: string;
-  } | null;
+  hazard: PanelHazard | null;
   isOpen: boolean;
   onClose: () => void;
   onZoomTo?: (lat: number, lon: number) => void;
 }
 
-// const severityConfig = {
-//   critical: { color: 'bg-red-500', textColor: 'text-red-700', bgLight: 'bg-red-50', label: 'Critical' },
-//   severe: { color: 'bg-orange-500', textColor: 'text-orange-700', bgLight: 'bg-orange-50', label: 'Severe' },
-//   moderate: { color: 'bg-yellow-500', textColor: 'text-yellow-700', bgLight: 'bg-yellow-50', label: 'Moderate' },
-//   minor: { color: 'bg-green-500', textColor: 'text-green-700', bgLight: 'bg-green-50', label: 'Minor' },
-//   unknown: { color: 'bg-gray-500', textColor: 'text-gray-700', bgLight: 'bg-gray-50', label: 'Unknown' },
-// };
-
-const hazardTypeIcons: Record<string, IconDefinition> = {
-  flood: faHouseFloodWater,
-  earthquake: faHouseChimneyCrack,
-  typhoon: faHurricane,
-  landslide: faHillRockslide,
-  volcanic_eruption: faVolcano,
-  storm_surge: faHouseFloodWaterCircleArrowRight,
-  drought: faSunPlantWilt,
-  wildfire: faFire,
+const severityStyles: Record<string, string> = {
+  critical: 'border-red-600 text-red-800 dark:text-red-300',
+  severe: 'border-orange-600 text-orange-800 dark:text-orange-300',
+  high: 'border-orange-600 text-orange-800 dark:text-orange-300',
+  moderate: 'border-amber-600 text-amber-800 dark:text-amber-300',
+  medium: 'border-amber-600 text-amber-800 dark:text-amber-300',
+  minor: 'border-teal-600 text-teal-800 dark:text-teal-300',
+  low: 'border-teal-600 text-teal-800 dark:text-teal-300',
 };
 
-export function HazardInfoPanel({
-  hazard,
-  isOpen,
-  onClose,
-  onZoomTo,
-}: HazardInfoPanelProps) {
-  const panelRef = useRef<HTMLElement>(null);
-  const previousFocusRef = useRef<HTMLElement | null>(null);
-  const closeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const [isClosing, setIsClosing] = useState(false);
+function timestamp(value?: string | null) {
+  if (!value || !Number.isFinite(Date.parse(value))) return 'Date unavailable';
+  return new Intl.DateTimeFormat('en-PH', {
+    timeZone: 'Asia/Manila', year: 'numeric', month: 'short', day: 'numeric',
+    hour: 'numeric', minute: '2-digit',
+  }).format(new Date(value)) + ' PHT';
+}
 
-  // Handle close with animation delay
-  const handleClose = useCallback(() => {
-    // Clear any existing timeout to prevent duplicate timers
-    if (closeTimeoutRef.current) {
-      clearTimeout(closeTimeoutRef.current);
-    }
-    setIsClosing(true);
-    // Wait for animation to complete before calling onClose
-    closeTimeoutRef.current = setTimeout(() => {
-      setIsClosing(false);
-      onClose();
-    }, 300); // Match animation duration
-  }, [onClose]);
-
-  // Cleanup timeout on unmount or when closing
+/** Non-modal details: map controls remain available while a report is open. */
+export function HazardInfoPanel({ hazard, isOpen, onClose, onZoomTo }: HazardInfoPanelProps) {
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
   useEffect(() => {
+    if (!isOpen) return;
+    const previous = document.activeElement as HTMLElement | null;
+    closeRef.current?.focus();
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onCloseRef.current();
+    };
+    document.addEventListener('keydown', escape);
     return () => {
-      if (closeTimeoutRef.current) {
-        clearTimeout(closeTimeoutRef.current);
-        closeTimeoutRef.current = null;
-      }
+      document.removeEventListener('keydown', escape);
+      if (previous?.isConnected) previous.focus();
     };
-  }, []);
-
-  // Close on Escape key
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen && !isClosing) {
-        handleClose();
-      }
-    };
-
-    if (isOpen) {
-      document.addEventListener('keydown', handleKeyDown);
-      return () => document.removeEventListener('keydown', handleKeyDown);
-    }
-  }, [isOpen, isClosing, handleClose]);
-
-  // Save previous focus when panel opens/closes
-  useEffect(() => {
-    if (isOpen && document.activeElement && document.activeElement instanceof HTMLElement) {
-      previousFocusRef.current = document.activeElement;
-    }
   }, [isOpen]);
 
-  // Implement focus trap - only depends on isOpen to avoid resetting focus when hazard changes
-  useEffect(() => {
-    if (!isOpen || !panelRef.current) return;
-
-    // Get all focusable elements in the panel
-    const focusableElements = panelRef.current.querySelectorAll<HTMLElement>(
-      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-    );
-    const firstElement = focusableElements[0];
-    const lastElement = focusableElements[focusableElements.length - 1];
-
-    // Focus the first focusable element when the panel opens
-    if (firstElement) {
-      firstElement.focus();
-    }
-
-    // Handle Tab key to trap focus
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== 'Tab') return;
-
-      if (e.shiftKey) {
-        // Shift+Tab
-        if (document.activeElement === firstElement) {
-          e.preventDefault();
-          lastElement?.focus();
-        }
-      } else {
-        // Tab
-        if (document.activeElement === lastElement) {
-          e.preventDefault();
-          firstElement?.focus();
-        }
-      }
-    };
-
-    if (focusableElements.length > 0) {
-      const element = panelRef.current;
-      if (element) {
-        element.addEventListener('keydown', handleKeyDown);
-      }
-      
-      // Restore focus when panel closes
-      return () => {
-        if (element) {
-          element.removeEventListener('keydown', handleKeyDown);
-        }
-        if (previousFocusRef.current) {
-          previousFocusRef.current.focus();
-        }
-      };
-    }
-
-    // If no focusable elements, just restore focus on close
-    if (previousFocusRef.current) {
-      return () => {
-        previousFocusRef.current?.focus();
-      };
-    }
-  }, [isOpen]);
-
-  // No overflow handling needed - panel is absolutely positioned and doesn't affect body layout
-  // The backdrop overlay prevents interaction with content behind the panel
-
-  // const severity = hazard ? (severityConfig[hazard.severity as keyof typeof severityConfig] || severityConfig.unknown) : severityConfig.unknown;
-  const confidencePercentage = hazard ? Math.round(hazard.confidence_score * 100) : 0;
-  const createdDate = hazard ? new Date(hazard.created_at) : new Date();
-  const formattedTime = createdDate.toLocaleTimeString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  if (!isOpen || !hazard) return null;
+  const sourceUrl = articleSourceUrl(hazard.source_url);
+  const publisher = sourceUrl ? new URL(sourceUrl).hostname.replace(/^www\./, '') : undefined;
+  const imageSource = articleSourceUrl(hazard.image_source_url) || sourceUrl;
+  const imagePublisher = imageSource ? new URL(imageSource).hostname.replace(/^www\./, '') : undefined;
+  const title = hazard.source_headline || hazard.source_title;
+  const severity = (hazard.severity || '').toLowerCase();
+  const knownSeverity = severityStyles[severity];
+  const confidence = Number.isFinite(hazard.confidence_score)
+    ? `${Math.round(Math.min(1, Math.max(0, hazard.confidence_score)) * 100)}%` : 'Unavailable';
+  const hasCoordinates = typeof hazard.latitude === 'number' && typeof hazard.longitude === 'number' &&
+    Number.isFinite(hazard.latitude) && Number.isFinite(hazard.longitude) &&
+    Math.abs(hazard.latitude) <= 90 && Math.abs(hazard.longitude) <= 180;
+  const automated = hazard.validation_notes?.startsWith('Auto-validated');
 
   return (
-    <>
-      <style>{`
-        .hazard-panel {
-          transition: opacity 0.3s ease;
-          will-change: opacity;
-        }
-
-        .hazard-panel-visible {
-          opacity: 1;
-          pointer-events: auto;
-        }
-
-        .hazard-panel-hidden {
-          opacity: 0;
-          pointer-events: none;
-        }
-
-        .hazard-backdrop {
-          transition: opacity 0.3s ease;
-          will-change: opacity;
-        }
-
-        .hazard-backdrop-visible {
-          opacity: 1;
-          visibility: visible;
-          pointer-events: auto;
-        }
-
-        .hazard-backdrop-hidden {
-          opacity: 0;
-          visibility: hidden;
-          pointer-events: none;
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-          .hazard-panel,
-          .hazard-backdrop {
-            transition: none;
-          }
-        }
-      `}</style>
-
-      {/* Backdrop overlay - always in DOM (purely decorative, close handled by panel button) */}
-      <div
-        onClick={isOpen && !isClosing ? handleClose : undefined}
-        className={`
-          absolute inset-0 z-[1999] cursor-pointer hazard-backdrop
-          ${isOpen && !isClosing ? 'hazard-backdrop-visible bg-black/30' : 'hazard-backdrop-hidden bg-transparent'}
-        `}
-        aria-hidden="true"
-      />
-    
-
-      {/* Info Panel - opacity fade (hidden with opacity, visible with opacity-100) */}
-      <aside
-        ref={panelRef}
-        className={cn(
-          'absolute inset-y-0 right-0 z-[2000] flex w-full flex-col shadow-2xl hazard-panel sm:w-96',
-          'border-l border-border bg-card text-card-foreground',
-          isOpen && !isClosing ? 'hazard-panel-visible' : 'hazard-panel-hidden'
-        )}
-        role="complementary"
-        aria-label="Hazard details"
-        aria-hidden={!isOpen || isClosing}
-      >
-        {/* Header */}
-        <div className="flex-shrink-0 border-b border-border bg-gradient-to-r from-muted/70 to-muted/40 p-6 dark:from-muted/50 dark:to-muted/25">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex flex-1 items-center gap-3">
-              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-muted">
-                <FontAwesomeIcon 
-                  icon={hazard ? (hazardTypeIcons[hazard.hazard_type] || faExclamationTriangle) : faExclamationTriangle} 
-                  className="text-lg text-foreground/80"
-                  aria-hidden="true"
-                />
-              </div>
-              <div>
-                <h2 className="text-xl font-bold capitalize text-foreground">
-                  {hazard ? hazard.hazard_type.replace(/_/g, ' ') : 'No hazard selected'}
-                </h2>
-                {/* <p className="text-sm text-gray-600 mt-1">{hazard ? hazard.location_name : 'No hazard selected'}</p> */}
-              </div>
-            </div>
-            <button
-              onClick={handleClose}
-              className="flex-shrink-0 rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background"
-              aria-label="Close panel"
-            >
-              <FontAwesomeIcon icon={faTimes} className="h-5 w-5" aria-hidden="true" />
-            </button>
-          </div>
+    <aside aria-labelledby="hazard-detail-title" className="absolute bottom-0 right-0 z-[2000] flex max-h-[75dvh] w-full flex-col border-t border-border bg-card text-card-foreground shadow-lg sm:top-0 sm:max-h-none sm:w-96 sm:border-l sm:border-t-0 lg:w-[26rem]">
+      <header className="flex shrink-0 items-start justify-between gap-3 border-b border-border px-5 py-4">
+        <div className="min-w-0">
+          <p className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">AI-classified report</p>
+          <h2 id="hazard-detail-title" className="text-xl font-bold capitalize leading-tight">{hazard.hazard_type.replace(/_/g, ' ')}</h2>
+          <p className="mt-2 text-sm text-muted-foreground break-words">{hazard.location_name || 'Location not specified'}</p>
         </div>
-
-        {/* Content - Scrollable */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          {hazard ? (
+        <Button ref={closeRef} variant="ghost" size="icon" onClick={onClose} aria-label="Close hazard details" className="shrink-0"><X className="h-5 w-5" aria-hidden="true" /></Button>
+      </header>
+      <div className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain p-5">
+        <div className={cn('flex items-center gap-2 border-l-4 bg-muted/40 px-3 py-2 text-sm', knownSeverity || 'border-border text-muted-foreground')}>
+          <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden="true" />
+          <span>Severity: <strong className="capitalize">{knownSeverity ? severity : 'Not assessed'}</strong></span>
+        </div>
+        <ArticleImage key={hazard.image_url} url={hazard.image_url} alt={hazard.image_alt} headline={title} source={imagePublisher} />
+        <section aria-label="Original source" className="space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Original source · {publisher || hazard.source_type.replace(/_/g, ' ')}</p>
+          {title && <h3 className="break-words text-lg font-semibold leading-snug">{title}</h3>}
+          {hazard.source_content ? (
             <>
-              {/* Severity Badge */}
-              {/* <div className={`${severity.bgLight} rounded-lg p-4`}>
-                <div className="flex items-center gap-3">
-                  <div className={`${severity.color} p-2 rounded-lg flex items-center justify-center w-8 h-8`}>
-                    <FontAwesomeIcon icon={faExclamationTriangle} className="text-white text-sm" aria-hidden="true" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-600 uppercase tracking-wide font-semibold">Severity Level</p>
-                    <p className={`${severity.textColor} font-bold text-lg`}>{severity.label}</p>
-                  </div>
-                </div>
-              </div> */}
-
-              {/* Quick Stats */}
-              <div className="grid grid-cols-3 gap-3">
-                {/* Confidence Score */}
-                <Card className="border-border bg-muted/40 p-3 text-center dark:bg-muted/25">
-                  <div className="mb-2 flex items-center justify-center">
-                    <FontAwesomeIcon icon={faChartLine} className="text-sm text-blue-600 dark:text-blue-400" aria-hidden="true" />
-                  </div>
-                  <p className="text-2xl font-bold text-foreground">{confidencePercentage}%</p>
-                  <p className="mt-1 text-xs text-muted-foreground">Confidence</p>
-                </Card>
-
-                {/* Coordinates */}
-                <Card className="border-border bg-muted/40 p-3 text-center dark:bg-muted/25">
-                  <div className="mb-2 flex items-center justify-center">
-                    <FontAwesomeIcon icon={faMapPin} className="text-sm text-green-600 dark:text-green-400" aria-hidden="true" />
-                  </div>
-                  <p className="font-mono text-xs text-foreground">
-                    {hazard.latitude.toFixed(3)}, <br /> {hazard.longitude.toFixed(3)}
-                  </p>
-                  <p className="mt-1 text-xs text-muted-foreground">Location</p>
-                </Card>
-
-                {/* Validation Status */}
-                <Card className="border-border bg-muted/40 p-3 text-center dark:bg-muted/25">
-                  <div className="mb-2 flex items-center justify-center">
-                    <FontAwesomeIcon 
-                      icon={faEye} 
-                      className={cn('text-sm', hazard.validated ? 'text-purple-600 dark:text-purple-400' : 'text-muted-foreground')} 
-                      aria-hidden="true" 
-                    />
-                  </div>
-                  <p className="text-xs font-bold uppercase text-foreground">{hazard.validated ? 'Valid' : 'Pending'}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">Status</p>
-                </Card>
-              </div>
-
-              {/* Details */}
-              <div className="space-y-3">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Source Type</p>
-                  <p className="mt-1 text-sm capitalize text-foreground">{hazard.source_type}</p>
-                </div>
-
-                <div>
-                  <div className="flex items-center gap-2">
-                    <FontAwesomeIcon icon={faClock} className="text-sm text-muted-foreground" aria-hidden="true" />
-                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Reported</p>
-                  </div>
-                  <p className="mt-1 text-sm text-foreground">{formattedTime}</p>
-                </div>
-
-                {hazard.source_content && (
-                  <div>
-                    <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Source Content</p>
-                    <p className="line-clamp-3 text-sm leading-relaxed text-muted-foreground">{hazard.source_content}</p>
-                  </div>
-                )}
-              </div>
-
-              {/* Information Note */}
-              <div
-                className={cn(
-                  'rounded-lg border p-3',
-                  'border-primary/20 bg-gradient-to-br from-secondary/[0.12] via-primary/[0.05] to-card',
-                  'dark:border-primary/40 dark:from-primary/20 dark:via-primary/10 dark:to-secondary/10'
-                )}
-              >
-                <p className="text-xs leading-relaxed text-foreground/90 dark:text-blue-100/90">
-                  <strong className="text-foreground">Confidence Score:</strong> This indicates how confident the AI model is about this classification. Higher scores mean more reliable predictions.
-                </p>
-              </div>
+              <p className="break-words text-sm leading-relaxed text-muted-foreground">{hazard.source_content.slice(0, 240)}{hazard.source_content.length > 240 ? '…' : ''}</p>
+              {hazard.source_content.length > 240 && <details key={hazard.id} className="group text-sm leading-relaxed">
+                <summary className="cursor-pointer rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><span className="ml-1">Read full source excerpt</span></summary>
+                <p className="mt-2 whitespace-pre-line break-words text-muted-foreground">{hazard.source_content}</p>
+              </details>}
             </>
-          ) : (
-            <div className="flex h-full items-center justify-center text-muted-foreground">
-              <p>No hazard selected</p>
-            </div>
-          )}
-        </div>
-
-        {/* Actions Footer - Always Visible */}
-        <div className="flex-shrink-0 space-y-2 border-t border-border bg-muted/50 p-6 dark:bg-muted/30">
-          <Button
-            onClick={() => hazard && onZoomTo?.(hazard.latitude, hazard.longitude)}
-            disabled={!hazard}
-            className="w-full bg-gradient-to-br from-primary to-secondary text-primary-foreground shadow-sm hover:from-primary/90 hover:to-secondary/90 disabled:cursor-not-allowed disabled:opacity-50"
-            size="sm"
-            title='Zoom to the selected pin location'
-          >
-            <FontAwesomeIcon icon={faMapPin} className="mr-2 text-sm" aria-hidden="true" />
-            Zoom to Location
-          </Button>
-
-          {hazard?.source_url?.trim() && (
-            <Button
-              onClick={() => {
-                if (hazard.source_url?.trim()) {
-                  window.open(hazard.source_url, '_blank', 'noopener,noreferrer');
-                }
-              }}
-              variant="outline"
-              className="w-full border-primary/35 text-foreground hover:bg-primary/10 dark:border-primary/50 dark:hover:bg-primary/15"
-              size="sm"
-              title="Open original source in new tab"
-            >
-              <FontAwesomeIcon icon={faExternalLinkAlt} className="mr-2 text-sm" aria-hidden="true" />
-              View Full Source
-            </Button>
-          )}
-        </div>
-      </aside>
-    </>
+          ) : <p className="text-sm text-muted-foreground">No source excerpt is available.</p>}
+          <p className="text-xs leading-relaxed text-muted-foreground">Source reporting is separate from AGAILA’s automated classification.</p>
+        </section>
+        <dl className="divide-y divide-border border-y border-border text-sm">
+          <div className="flex justify-between gap-3 py-3"><dt className="text-muted-foreground">Source type</dt><dd className="capitalize">{hazard.source_type.replace(/_/g, ' ')}</dd></div>
+          {hazard.source_published_at && <div className="py-3"><dt className="text-xs text-muted-foreground">Article published</dt><dd className="mt-1">{timestamp(hazard.source_published_at)}</dd></div>}
+          <div className="py-3"><dt className="text-xs text-muted-foreground">Recorded by AGAILA</dt><dd className="mt-1">{timestamp(hazard.created_at)}</dd></div>
+          <div className="py-3"><dt className="text-xs text-muted-foreground">Coordinates · latitude, longitude</dt>
+            <dd className="mt-1 font-mono text-xs">{hasCoordinates ? `${hazard.latitude!.toFixed(4)}, ${hazard.longitude!.toFixed(4)}` : 'Coordinates unavailable'}</dd>
+          </div>
+          <div className="flex justify-between gap-3 py-3"><dt className="text-muted-foreground">AI classification confidence</dt><dd className="font-semibold tabular-nums">{confidence}</dd></div>
+          <div className="py-3"><dt className="text-xs text-muted-foreground">Workflow validation</dt><dd className="mt-1 font-medium">{hazard.validated ? (automated ? 'Passed automated screening' : 'Recorded as valid') : 'Pending validation'}</dd></div>
+        </dl>
+        <details className="text-xs leading-relaxed text-muted-foreground">
+          <summary className="cursor-pointer rounded-sm font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">Understanding confidence and validation</summary>
+          <p className="mt-2">Confidence measures the model’s fit to a hazard category. Even 100% confidence does not confirm that an event occurred or indicate its severity.</p>
+          <p className="mt-2">Validation is an AGAILA workflow status and may be automated. It is not independent confirmation. Severity is shown only when explicitly recorded.</p>
+          {hazard.validation_notes && <p className="mt-2 break-words">Validation note: {hazard.validation_notes}</p>}
+        </details>
+      </div>
+      <footer className="shrink-0 space-y-2 border-t border-border bg-card p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+        <Button className="w-full" disabled={!hasCoordinates || !onZoomTo} onClick={() => { if (hasCoordinates) onZoomTo?.(hazard.latitude!, hazard.longitude!); }}><MapPin className="mr-2 h-4 w-4" aria-hidden="true" />Zoom to Location</Button>
+        {sourceUrl && <Button variant="outline" className="w-full" asChild><a href={sourceUrl} target="_blank" rel="noopener noreferrer"><ExternalLink className="mr-2 h-4 w-4" aria-hidden="true" />View Full Source<span className="sr-only"> (opens in a new tab)</span></a></Button>}
+      </footer>
+    </aside>
   );
 }
