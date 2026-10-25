@@ -26,9 +26,9 @@ export const landingAssets = {
   
   // Features Section
   features: {
-    aiClassification: '/assets/img/feature-ai-classification.webp',
-    geoNer: '/assets/img/feature-geo-ner.webp',
-    commandDashboard: '/assets/img/feature-command-dashboard.webp',
+    aiClassification: '/assets/img/feature-ai-classification.png',
+    geoNer: '/assets/img/feature-geo-ner.png',
+    commandDashboard: '/assets/img/feature-command-dashboard.png',
   },
   
   // Product Showcase Section  

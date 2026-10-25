@@ -63,8 +63,7 @@ export function HazardTypeFilter({
   
   /**
    * Returns the logical state for interaction (checked / indeterminate-ish / unchecked).
-   * Row chrome uses the shared "accent" styling for both neutral (filter off) and
-   * individually checked rows — only the checkbox glyph differs.
+   * Neutral rows indicate that filtering is off; selected rows get a blue accent.
    */
   const getItemState = (typeIsSelected: boolean) => {
     if (typeIsSelected) return 'selected';
@@ -77,15 +76,16 @@ export function HazardTypeFilter({
   // ============================================================================
   
   const accentTileBackgroundClass =
-    'border-secondary-200 bg-secondary-50 hover:border-secondary-300 dark:border-secondary/35 dark:bg-secondary/15 dark:hover:border-secondary/55';
+    'border-secondary-200 bg-secondary-50 hover:border-secondary-300';
 
   const getItemBackgroundClass = (state: 'selected' | 'neutral' | 'deselected') => {
     switch (state) {
       case 'selected':
+        return `${accentTileBackgroundClass} dark:border-secondary-400 dark:bg-secondary-500/10 dark:hover:bg-secondary-500/20`;
       case 'neutral':
-        return accentTileBackgroundClass;
+        return `${accentTileBackgroundClass} dark:border-border dark:bg-background/40 dark:hover:border-slate-500 dark:hover:bg-muted`;
       case 'deselected':
-        return 'border-border bg-muted/50 hover:bg-muted/70 dark:bg-muted/20 dark:hover:bg-muted/35';
+        return 'border-border bg-muted/50 hover:bg-muted/70 dark:bg-background/40 dark:hover:border-slate-500 dark:hover:bg-muted';
     }
   };
 
@@ -93,15 +93,16 @@ export function HazardTypeFilter({
   // HELPER: Get checkbox background class based on state
   // ============================================================================
   
-  const accentCheckboxClass = 'bg-secondary-200 border-secondary-300 dark:bg-secondary-200 dark:border-secondary-300';
+  const accentCheckboxClass = 'bg-secondary-200 border-secondary-300';
 
   const getCheckboxClass = (state: 'selected' | 'neutral' | 'deselected') => {
     switch (state) {
       case 'selected':
+        return `${accentCheckboxClass} dark:bg-secondary-700 dark:border-secondary-400`;
       case 'neutral':
-        return accentCheckboxClass;
+        return `${accentCheckboxClass} dark:bg-background dark:border-slate-500`;
       case 'deselected':
-        return 'border-border bg-background group-hover:border-secondary/40 dark:bg-muted dark:group-hover:border-secondary/55';
+        return 'border-border bg-background group-hover:border-secondary/40 dark:border-slate-500 dark:bg-background dark:group-hover:border-secondary-300';
     }
   };
 
@@ -222,6 +223,7 @@ export function HazardTypeFilter({
               flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium
               rounded-md transition-all duration-200
               text-muted-foreground hover:bg-muted hover:text-foreground
+              dark:text-secondary-200 dark:hover:bg-secondary-500/10 dark:hover:text-secondary-100
               disabled:text-muted-foreground/50 disabled:bg-transparent disabled:cursor-not-allowed
               focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background
             "
@@ -240,8 +242,8 @@ export function HazardTypeFilter({
 
         {/* Summary Badge */}
         {!noneSelected && (
-          <div className="flex items-center gap-2 px-3 py-2 bg-secondary/15 rounded-lg border border-secondary/25 dark:bg-secondary/10 dark:border-secondary/30">
-            <Badge variant="secondary" className="font-semibold bg-secondary/25 text-secondary-900 dark:bg-secondary/30 dark:text-blue-100">
+          <div className="flex items-center gap-2 px-3 py-2 bg-secondary/15 rounded-lg border border-secondary/25 dark:bg-background/40 dark:border-border">
+            <Badge variant="secondary" className="font-semibold bg-secondary/25 text-secondary-900 dark:bg-secondary-500/15 dark:text-secondary-100 dark:hover:bg-secondary-500/15">
               {selectedTypes.length} / {ALL_HAZARD_TYPES.length}
             </Badge>
             {totalCount > 0 && (
@@ -275,7 +277,7 @@ export function HazardTypeFilter({
                     border-2 transition-all duration-200 cursor-pointer
                     ${itemBgClass}
                     ${disabled ? 'opacity-50 cursor-not-allowed pointer-events-none' : 'hover:shadow-sm'}
-                    focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 focus-within:ring-offset-background
+                    focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 focus-within:ring-offset-background dark:focus-within:ring-secondary-300 dark:focus-within:ring-offset-card
                   `}
                 >
                   {/* Hidden Checkbox */}
@@ -298,7 +300,7 @@ export function HazardTypeFilter({
                     >
                       {typeIsSelected && (
                         <svg
-                          className="w-3 h-3 text-secondary-700 dark:text-sky-200"
+                          className="w-3 h-3 text-secondary-700 dark:text-white"
                           fill="currentColor"
                           viewBox="0 0 20 20"
                         >
@@ -311,7 +313,7 @@ export function HazardTypeFilter({
                       )}
                       {state === 'neutral' && (
                         <svg
-                          className="w-3 h-3 text-muted-foreground"
+                          className="w-3 h-3 text-muted-foreground dark:text-slate-300"
                           fill="currentColor"
                           viewBox="0 0 20 20"
                         >
@@ -327,7 +329,7 @@ export function HazardTypeFilter({
                       'flex items-center justify-center w-8 h-8 rounded-md flex-shrink-0 transition-all duration-200',
                       iconStyles.scaleClass,
                       (state === 'neutral' || state === 'selected') &&
-                        'bg-secondary-100 text-secondary-700 dark:bg-secondary/40 dark:text-sky-200'
+                        'bg-secondary-100 text-secondary-700 dark:bg-muted dark:text-secondary-200'
                     )}
                     style={
                       state === 'neutral' || state === 'selected'
@@ -352,7 +354,7 @@ export function HazardTypeFilter({
                       variant="outline"
                       className={`text-xs flex-shrink-0 transition-all duration-200 whitespace-nowrap border ${
                         count > 0
-                          ? 'font-semibold shadow-sm bg-gradient-to-br from-primary/12 to-secondary/12 text-primary border-primary/25 dark:from-primary/90 dark:to-secondary/80 dark:text-primary-foreground dark:border-primary/40'
+                          ? 'font-semibold shadow-sm bg-gradient-to-br from-primary/12 to-secondary/12 text-primary border-primary/25 dark:bg-none dark:bg-muted dark:text-foreground dark:border-slate-600 dark:shadow-none'
                           : 'font-normal text-muted-foreground border-border bg-transparent'
                       }`}
                     >
