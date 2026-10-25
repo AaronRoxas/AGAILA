@@ -16,7 +16,7 @@
     --secondary: 205 100% 31%; /* #005A9C */
     --secondary-foreground: 0 0% 100%;
     --muted: 210 40% 96.1%;
-    --muted-foreground: 215 20% 55%;
+    --muted-foreground: 215 20% 42%; /* Readable secondary text on light surfaces */
     --accent: 28 100% 50%; /* #FF7A00 */
     --accent-foreground: 0 0% 100%;
     --destructive: 0 84.2% 60.2%;

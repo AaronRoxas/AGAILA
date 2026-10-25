@@ -163,6 +163,18 @@ class RSSProcessor:
                                 feed_url
                             )
                             
+                            # The legacy diagnostic path returns results rather than
+                            # persisting them; use the same image contract as Celery.
+                            from backend.python.utils.article_images import ArticleImageExtractor
+                            if not hasattr(self, '_image_extractor'):
+                                self._image_extractor = ArticleImageExtractor()
+                            try:
+                                image = await asyncio.to_thread(
+                                    self._image_extractor.extract, entry.get('link', ''), entry, content_data['title']
+                                )
+                                hazard_data.update(image.fields())
+                            except Exception:
+                                logger.warning("Optional diagnostic article image extraction failed")
                             hazards_found.append(hazard_data)
                             items_added += 1
                             logger.info(f"Found hazard: {hazard_data['title']}")

@@ -290,6 +290,10 @@ class RSSProcessorEnhanced:
                             )
                             
                             if hazard_id:
+                                # Persist the hazard first; optional enrichment must never
+                                # interrupt classification, location validation or ingestion.
+                                from backend.python.utils.article_images import queue_article_image
+                                queue_article_image(hazard_id, entry.get('link', ''), entry, content_data['title'])
                                 hazard_summary = {
                                     'id': hazard_id,
                                     'title': content_data['title'],

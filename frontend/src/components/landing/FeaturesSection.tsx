@@ -27,7 +27,7 @@ export const FeaturesSection: React.FC = () => {
     },
     {
       title: 'Unified Command Dashboard',
-      description: 'A multi-channel hub that visualizes all verified hazard data on an interactive map for real-time situational awareness.',
+      description: 'A map of screened hazard reports with source attribution and filters for local situational awareness. Automated screening does not independently confirm an event.',
       image: landingAssets.features.commandDashboard,
       fit: 'cover' as const,
       backgroundColor: '',

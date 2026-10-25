@@ -325,6 +325,8 @@ export function useHazardFilters() {
     saveFiltersToStorage(filters);
 
     const newParams = serializeFiltersToURL(filters);
+    const reportId = searchParams.get('report');
+    if (reportId) newParams.set('report', reportId);
     const currentParamsStr = searchParams.toString();
     const newParamsStr = newParams.toString();
 
@@ -348,7 +350,12 @@ export function useHazardFilters() {
   const resetFilters = useCallback(() => {
     clearFiltersFromStorage();
     setFilters({ ...DEFAULT_FILTERS });
-    setSearchParams(new URLSearchParams(), { replace: true });
+    setSearchParams(previous => {
+      const params = new URLSearchParams();
+      const reportId = previous.get('report');
+      if (reportId) params.set('report', reportId);
+      return params;
+    }, { replace: true });
   }, [setSearchParams]);
 
   /**

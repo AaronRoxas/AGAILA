@@ -14,7 +14,7 @@ describe('getHazardMarkerIcon', () => {
   it('creates a marker icon with SVG for flood hazard', () => {
     const icon = getHazardMarkerIcon('flood', 'low');
     expect(icon.options.html).toContain('<svg');
-    expect(icon.options.html).toContain('flood');
+    expect(icon.options.html).toContain('Flood'); // Accessible hazard label, not SVG implementation text.
     expect(icon.options.className).toBe('hazard-marker-icon');
     expect(icon.options.iconSize).toEqual([24, 24]);
   });
@@ -72,7 +72,20 @@ describe('getHazardMarkerIcon', () => {
   it('falls back to "other" for unknown hazard types', () => {
     const icon = getHazardMarkerIcon('unknown_hazard', 'low');
     expect(icon.options.html).toContain('<svg');
-    expect(icon.options.html).toContain('exclamation'); // Other uses exclamation icon
+    expect(icon.options.html).toContain('Other hazard indicator');
+  });
+
+  it('keeps missing severity distinct from low and describes recorded severity', () => {
+    const unknown = getHazardMarkerIcon('flood');
+    const low = getHazardMarkerIcon('flood', 'low');
+    const severe = getHazardMarkerIcon('flood', 'severe');
+    const moderate = getHazardMarkerIcon('flood', 'moderate');
+    expect(unknown.options.html).toContain('Severity: not assessed');
+    expect(low.options.html).toContain('Severity: low');
+    expect(unknown.options.html).not.toEqual(low.options.html);
+    expect(severe.options.html).toContain('Severity: severe');
+    expect(moderate.options.html).toContain('Severity: moderate');
+    expect(severe.options.html).not.toEqual(moderate.options.html);
   });
 
   it('tracks cache statistics correctly', () => {

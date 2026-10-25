@@ -76,6 +76,21 @@ logger.info(f"Celery configured: RSS feeds will be processed every {RSS_UPDATE_I
 # CELERY TASKS
 # ============================================================================
 
+_article_image_extractor = None
+
+
+@celery_app.task(name='celery_worker.enrich_article_image_task', rate_limit='30/m',
+                 soft_time_limit=25, time_limit=30, ignore_result=True)
+def enrich_article_image_task(hazard_id, article_url, entry, title):
+    """Bounded optional enrichment on the existing worker; no new service."""
+    import asyncio
+    from backend.python.lib.supabase_client import supabase
+    from backend.python.utils.article_images import ArticleImageExtractor, enrich_saved_hazard
+    global _article_image_extractor
+    if _article_image_extractor is None:
+        _article_image_extractor = ArticleImageExtractor()
+    asyncio.run(enrich_saved_hazard(supabase, hazard_id, article_url, entry, title, _article_image_extractor))
+
 
 @celery_app.task(name='celery_worker.system_heartbeat_task', bind=True)
 def system_heartbeat_task(self):

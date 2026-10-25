@@ -3,7 +3,7 @@
   "version": "2.1.0",
   "private": true,
   "engines": {
-    "node": ">=20 <23"
+    "node": ">=24"
   },
   "overrides": {
     "serialize-javascript": "7.0.5",
@@ -99,7 +99,7 @@
     "yaml": "2.8.3"
   },
   "scripts": {
-    "start": "react-scripts start",
+    "start": "node --env-file-if-exists=../.env.home node_modules/react-scripts/bin/react-scripts.js start",
     "build": "react-scripts build",
     "test": "cross-env TZ=Asia/Manila react-scripts test",
     "test:vitest": "vitest --run",

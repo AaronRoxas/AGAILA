@@ -60,6 +60,14 @@ export interface HazardResponse {
   source_url: string | null;
   source_title: string | null;
   source_content: string | null;
+  source_published_at?: string | null;
+  source_headline?: string | null;
+  validation_notes?: string | null;
+  image_url?: string | null;
+  image_source_url?: string | null;
+  image_alt?: string | null;
+  image_status?: 'available' | 'missing' | 'failed' | null;
+  image_last_checked_at?: string | null;
   created_at: string;
   validated_at: string | null;
   validated_by: string | null;
@@ -412,6 +420,14 @@ export function mapApiResponseToHazard(response: HazardResponse): Hazard {
     source_url: response.source_url || undefined,
     source_title: response.source_title || undefined,
     source_content: response.source_content || undefined,
+    source_published_at: response.source_published_at || undefined,
+    source_headline: response.source_headline,
+    validation_notes: response.validation_notes || undefined,
+    image_url: response.image_url,
+    image_source_url: response.image_source_url,
+    image_alt: response.image_alt,
+    image_status: response.image_status,
+    image_last_checked_at: response.image_last_checked_at,
     created_at: response.created_at,
     validated_at: response.validated_at || undefined,
     validated_by: response.validated_by || undefined,

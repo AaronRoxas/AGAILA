@@ -5,22 +5,22 @@ export const ProductShowcaseSection: React.FC = () => {
   const showcaseItems = [
     {
       title: 'Live Hazard Map',
-      description: 'The central dashboard view, showing all active, geolocated hazard reports in real-time.',
+      description: 'Explore geolocated reports and open the original sources behind each classification.',
       backgroundImage: landingAssets.hero.showcaseImage,
     },
     {
       title: 'AI-Classified Report Feed',
-      description: 'The central dashboard view, showing all active, geolocated hazard reports in real-time.',
+      description: 'Review detected hazard categories alongside classification confidence and source content.',
       backgroundImage: landingAssets.hero.aiClassification,
     },
     {
       title: 'Hazard Density Heatmap',
-      description: 'The central dashboard view, showing all active, geolocated hazard reports in real-time.',
+      description: 'See where reports cluster. Report density is not a measurement of hazard severity.',
       backgroundImage: landingAssets.hero.hazardDensityMap,
     },
     {
       title: 'Real-Time Filtering',
-      description: 'The central dashboard view, showing all active, geolocated hazard reports in real-time.',
+      description: 'Narrow the map by hazard type, reporting period and source to focus your review.',
       backgroundImage: landingAssets.hero.realTimeFiltering,
     },
   ];
@@ -35,10 +35,10 @@ export const ProductShowcaseSection: React.FC = () => {
           id="showcase-heading"
           className="font-lato font-extrabold text-[28px] sm:text-[32px] md:text-[36px] leading-[1.2] text-foreground"
         >
-          AGAILA&apos;s AI-Generated Assessments
+          From source reports to spatial context
         </h2>
         <p className="font-lato max-w-[720px] text-[14px] sm:text-[16px] leading-[24px] text-muted-foreground">
-          Explore the real-time outputs from our AI pipeline, turning unstructured reports into live intelligence.
+          Explore AGAILA’s tools below. These interface previews illustrate capabilities; current reports appear in the map above.
         </p>
       </div>
 
